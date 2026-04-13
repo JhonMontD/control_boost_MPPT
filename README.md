@@ -96,7 +96,7 @@ El algoritmo se ejecuta cada `TS_MPPT_MS` milisegundos:
 9. Actualizar P_anterior, V_anterior
 ```
 
-El setpoint resultante es la **referencia de voltaje** que el PID intentará seguir en la salida del convertidor.
+El setpoint resultante es la **referencia de voltaje del panel** que el PID intentará seguir ajustando el duty cycle del convertidor.
 
 ---
 

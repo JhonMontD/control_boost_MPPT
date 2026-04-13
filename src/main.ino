@@ -15,7 +15,7 @@
  *
  * Configuración del Timer1:
  *   Se configura Timer1 en modo Fast PWM de 8 bits con prescaler = 1,
- *   generando ~31.4 kHz en el pin 9, adecuado para el MOSFET del Boost.
+ *   generando ~62.5 kHz en el pin 9, adecuado para el MOSFET del Boost.
  *
  * Hardware requerido:
  *   - Arduino Uno / Nano / Mega
