@@ -85,14 +85,15 @@ El algoritmo se ejecuta cada `TS_MPPT_MS` milisegundos:
 2. P_actual = V_panel × I_panel
 3. dP = P_actual − P_anterior
 4. dV = V_panel − V_anterior
-5. Si dP > 0:
+5. Si |dP| < umbral → no perturbar (estabilidad en el MPP)
+6. Si dP > 0:
      Si dV > 0 → setpoint += DELTA_D   (seguimos en buena dirección)
      Si dV < 0 → setpoint -= DELTA_D
-6. Si dP ≤ 0:
+7. Si dP ≤ 0:
      Si dV > 0 → setpoint -= DELTA_D
      Si dV < 0 → setpoint += DELTA_D   (invertir dirección)
-7. setpoint = saturar(setpoint, V_min, V_max)
-8. Actualizar P_anterior, V_anterior
+8. setpoint = saturar(setpoint, V_min, V_max)
+9. Actualizar P_anterior, V_anterior
 ```
 
 El setpoint resultante es la **referencia de voltaje** que el PID intentará seguir en la salida del convertidor.
@@ -104,8 +105,8 @@ El setpoint resultante es la **referencia de voltaje** que el PID intentará seg
 El PID se ejecuta cada `TS_PID_MS` milisegundos:
 
 ```
-1. Leer voltaje de salida Vo
-2. error = setpoint − Vo
+1. Leer voltaje del panel V_panel (variable a controlar)
+2. error = setpoint − V_panel
 3. integral += error × Ts        (con anti-windup por clamping)
 4. derivada = (error − error_prev) / Ts
 5. output = Kp×error + Ki×integral + Kd×derivada

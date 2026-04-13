@@ -183,9 +183,8 @@ void loop() {
         // Guardar potencia para reporte
         p_panel = mppt.getPower();
 
-        // Cuando el MPPT cambia el setpoint, resetear el integrador del PID
-        // para evitar un transitorio brusco
-        pid.reset();
+        // El integrador del PID se mantiene activo entre pasos MPPT
+        // para que el lazo interno siga convergiendo sin interrupciones.
     }
 
     // ------------------------------------------------------------------
@@ -195,11 +194,15 @@ void loop() {
     if ((now - lastTimePID) >= TS_PID_MS) {
         lastTimePID = now;
 
-        // Leer voltaje de salida
-        v_out = readVOut();
+        // Leer voltaje del panel (la variable a controlar: el MPPT fija su referencia)
+        // El PID ajusta el duty cycle para que v_panel siga el setpoint del MPPT.
+        // En un Boost: mayor duty → más corriente extraída del panel → v_panel baja.
+        // Por tanto se regula v_panel, no v_out, con el setpoint dado por MPPT.
+        v_panel = readVPanel();
+        v_out   = readVOut();   // Se sigue leyendo para el reporte serial
 
-        // Calcular nuevo duty cycle con el PID
-        duty = pid.update(setpoint, v_out);
+        // Calcular nuevo duty cycle con el PID (setpoint y medición en [V])
+        duty = pid.update(setpoint, v_panel);
 
         // Aplicar duty cycle al PWM
         // duty es fracción [DUTY_MIN, DUTY_MAX], se escala a [0, PWM_MAX]

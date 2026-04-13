@@ -7,19 +7,24 @@
  *  2. P_actual = V_panel * I_panel
  *  3. dP = P_actual - P_anterior
  *  4. dV = V_panel - V_anterior
- *  5. Si dP > 0:
+ *  5. Si |dP| < umbral (zona muerta): no perturbar (ya estamos cerca del MPP)
+ *  6. Si dP > 0:
  *       Si dV > 0 → incrementar setpoint de voltaje
  *       Si dV < 0 → decrementar setpoint de voltaje
- *  6. Si dP < 0:
+ *  7. Si dP < 0:
  *       Si dV > 0 → decrementar setpoint de voltaje
  *       Si dV < 0 → incrementar setpoint de voltaje
- *  7. Actualizar P_anterior, V_anterior
+ *  8. Actualizar P_anterior, V_anterior
  *
  * Proyecto: Control Boost MPPT
  * Plataforma: Arduino Uno / Nano / Mega
  */
 
 #include "mppt_po.h"
+
+// Umbral mínimo de cambio de potencia para considerar que el MPP fue perturbado.
+// Evita oscilaciones innecesarias cuando la potencia no cambia significativamente.
+static const float DP_THRESHOLD = 0.01f;  // [W]
 
 // ---------------------------------------------------------------------------
 // Constructor
@@ -56,31 +61,36 @@ float MPPT_PO::update(float v_panel, float i_panel) {
     float dP = _p_actual - _p_prev;
     float dV = v_panel   - _v_prev;
 
-    // Pasos 5-6: lógica de perturbación
-    if (dP > 0.0f) {
-        // La potencia aumentó
-        if (dV > 0.0f) {
-            // Seguimos en la dirección correcta → aumentar setpoint
-            _setpoint += _delta_d;
+    // Paso 5: zona muerta — si el cambio de potencia es despreciable,
+    // no perturbar para evitar oscilaciones alrededor del MPP.
+    if (dP > DP_THRESHOLD || dP < -DP_THRESHOLD) {
+        // Pasos 6-7: lógica de perturbación
+        if (dP > 0.0f) {
+            // La potencia aumentó
+            if (dV > 0.0f) {
+                // Seguimos en la dirección correcta → aumentar setpoint
+                _setpoint += _delta_d;
+            } else {
+                // Disminución de V llevó a aumento de P → decrementar setpoint
+                _setpoint -= _delta_d;
+            }
         } else {
-            // Disminución de V llevó a aumento de P → decrementar setpoint
-            _setpoint -= _delta_d;
+            // La potencia disminuyó
+            if (dV > 0.0f) {
+                // Aumento de V causó disminución de P → decrementar setpoint
+                _setpoint -= _delta_d;
+            } else {
+                // Disminución de V causó disminución de P → aumentar setpoint
+                _setpoint += _delta_d;
+            }
         }
-    } else {
-        // La potencia disminuyó o no cambió
-        if (dV > 0.0f) {
-            // Aumento de V causó disminución de P → decrementar setpoint
-            _setpoint -= _delta_d;
-        } else {
-            // Disminución de V causó disminución de P → aumentar setpoint
-            _setpoint += _delta_d;
-        }
+
+        // Saturar el setpoint dentro de los límites permitidos
+        _setpoint = constrain(_setpoint, _v_min, _v_max);
     }
+    // Si |dP| <= DP_THRESHOLD, mantenemos el setpoint actual (estamos cerca del MPP)
 
-    // Saturar el setpoint dentro de los límites permitidos
-    _setpoint = constrain(_setpoint, _v_min, _v_max);
-
-    // Paso 7: actualizar valores anteriores
+    // Paso 8: actualizar valores anteriores
     _p_prev = _p_actual;
     _v_prev = v_panel;
 
@@ -97,3 +107,4 @@ float MPPT_PO::getSetpoint() const {
 float MPPT_PO::getPower() const {
     return _p_actual;
 }
+
